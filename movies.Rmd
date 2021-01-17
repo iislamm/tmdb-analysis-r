@@ -3,84 +3,54 @@ title: "R Notebook"
 output: html_notebook
 ---
 
-Imports
+# Data Reading and Processing 
+## Imports
 ```{r}
 library(ggplot2)
-#library(tidyr)
 library(dplyr)
 ```
 
-Read the dataset
+## Read the dataset
 ```{r}
  all_movies <- read.csv("./Datasets/tmdb-movies.csv")
 ```
 
-
-
-
-```{r}
-moviedata = all_movies
-Genre<-moviedata$genres
-Genre<-as.data.frame(Genre)
-Genre<-separate(Genre, col = Genre, into=c("1","2","3","4","5","6"))
-##View(Genre)
-moviedata$genres<-Genre$`5`
-##View(moviedata)
-Keywords<-moviedata$keywords
-Keywords<-as.data.frame(Keywords)
-Keywords<-separate(Keywords, col = Keywords, into=c("1","2","3","4","5","6"))
-moviedata$keywords<-Keywords$`5`
-##View(moviedata)
-Production<-moviedata$production_companies
-Production<-as.data.frame(Production)
-##View(Production)
-test<-separate(Production, col = Production, into=c("1","2","3","4","5","6"), sep = ":")
-##View(test)
-table(is.na(test[,4]))
-```
-
-
-
-
-
-
 ```{r}
 all_movies[0:3,]
 ```
-remove unncessary columns
+## remove unncessary columns
 ```{r}
-# all_movies = subset(all_movies, select = -c('imdb_id','cast','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title','budget'))
-all_movies = all_movies[,!(names(all_movies) %in% c('imdb_id','cast','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title','budget'))]
+all_movies = all_movies[,!(names(all_movies) %in% c('imdb_id','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title'))]
 all_movies[1,]
 ```
 
-remove NA rows
+## remove NA rows
 ```{r}
 nrow(all_movies)
 all_movies = all_movies[rowSums(is.na(all_movies)) == 0,]
 nrow(all_movies)
 ```
 
-genres to vector
+### genres to vector
 ```{r}
 all_movies$genres = strsplit(all_movies$genres, "\\|")
 ```
 
-spread genres
+### spread genres
 ```{r}
 all_movies = all_movies %>%
   unnest(genres)
 ```
 
 
-EDA
+# EDA
 
-data summary
+## data summary
 ```{r}
 summary(all_movies)
 ```
 
-Genres Popularity
+## Genres Popularity
 ```{r}
 ggplot(all_movies, aes(genres)) + geom_bar(stat = 'count') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
@@ -96,4 +66,80 @@ ggplot(all_movies,
         axis.ticks.y = element_blank(),
         axis.title.x = element_blank())
 ```
+
+
+## Average budget per genre
+
+```{r}
+budget_per_genre = aggregate(list(budget=all_movies$budget), by=list(genre=all_movies$genres), FUN=mean)
+budget_per_genre
+```
+
+```{r}
+ggplot(budget_per_genre, aes(genre, budget), label=as.character(round(x,2))) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## Average revenue per genre
+
+```{r}
+revenue_per_genre = aggregate(list(revenue=all_movies$revenue), by=list(genre=all_movies$genres), FUN=mean)
+revenue_per_genre[order(revenue_per_genre$revenue, decreasing = TRUE),]
+```
+
+
+```{r}
+ggplot(revenue_per_genre[1:10,], aes(genre, revenue), label=as.character(round(x,2))) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+
+
+## Cast influence on revenue | top 30
+```{r}
+all_movies = all_movies %>%
+  mutate(cast=strsplit(cast, "\\|")) %>% 
+  unnest(cast)
+```
+
+```{r}
+revenue_per_cast = aggregate(all_movies$revenue, by=list(cast=all_movies$cast), FUN=mean)
+revenue_per_cast = revenue_per_cast[order(revenue_per_cast$x, decreasing = TRUE),]
+revenue_per_cast
+```
+
+
+```{r}
+ggplot(revenue_per_cast[1:30,], aes(cast, x)) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+## Popularity and revenue
+
+```{r}
+ggplot(all_movies, aes(popularity, revenue)) + geom_point() + xlim(0, 10)
+```
+
+
+--------------------------------------------------
+
+
+# Inferential statistics
+```{r}
+regression_model = lm(data = all_movies, formula = revenue ~ budget)
+regression_model
+```
+
+```{r}
+summary(regression_model)
+```
+
+
+
+```{r}
+ggplot(all_movies, aes(budget, revenue)) + geom_point() + geom_smooth(method = 'lm', col='blue')
+```
+
+
+
+
+
+
 
