@@ -1,0 +1,99 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Imports
+```{r}
+library(ggplot2)
+#library(tidyr)
+library(dplyr)
+```
+
+Read the dataset
+```{r}
+ all_movies <- read.csv("./Datasets/tmdb-movies.csv")
+```
+
+
+
+
+```{r}
+moviedata = all_movies
+Genre<-moviedata$genres
+Genre<-as.data.frame(Genre)
+Genre<-separate(Genre, col = Genre, into=c("1","2","3","4","5","6"))
+##View(Genre)
+moviedata$genres<-Genre$`5`
+##View(moviedata)
+Keywords<-moviedata$keywords
+Keywords<-as.data.frame(Keywords)
+Keywords<-separate(Keywords, col = Keywords, into=c("1","2","3","4","5","6"))
+moviedata$keywords<-Keywords$`5`
+##View(moviedata)
+Production<-moviedata$production_companies
+Production<-as.data.frame(Production)
+##View(Production)
+test<-separate(Production, col = Production, into=c("1","2","3","4","5","6"), sep = ":")
+##View(test)
+table(is.na(test[,4]))
+```
+
+
+
+
+
+
+```{r}
+all_movies[0:3,]
+```
+remove unncessary columns
+```{r}
+# all_movies = subset(all_movies, select = -c('imdb_id','cast','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title','budget'))
+all_movies = all_movies[,!(names(all_movies) %in% c('imdb_id','cast','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title','budget'))]
+all_movies[1,]
+```
+
+remove NA rows
+```{r}
+nrow(all_movies)
+all_movies = all_movies[rowSums(is.na(all_movies)) == 0,]
+nrow(all_movies)
+```
+
+genres to vector
+```{r}
+all_movies$genres = strsplit(all_movies$genres, "\\|")
+```
+
+spread genres
+```{r}
+all_movies = all_movies %>%
+  unnest(genres)
+```
+
+
+EDA
+
+data summary
+```{r}
+summary(all_movies)
+```
+
+Genres Popularity
+```{r}
+ggplot(all_movies, aes(genres)) + geom_bar(stat = 'count') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(all_movies, 
+        aes(x = factor(1),fill = factor(genres))) + 
+  geom_bar(stat = "count") + 
+  scale_y_continuous(breaks = seq(0,12,3), labels = c("0", "25%", "50%", "75%", "100%")) + 
+  coord_polar(theta='y') +
+  theme(axis.text.y = element_blank(), 
+        axis.title.y = element_blank(), 
+        axis.ticks.y = element_blank(),
+        axis.title.x = element_blank())
+```
+
