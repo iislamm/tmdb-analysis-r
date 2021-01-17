@@ -1,16 +1,39 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: "TMDB Analysis"
+output:
+  pdf_document: default
+  html_notebook: default
 ---
 
-# Data Reading and Processing 
-## Imports
+## Members
+Islam Mohamed       171549
+Mostafa Yasser      170397
+Youssef Tarek       178112
+
+## Introduction
+### Dataset
+The data set contains information about 10,000 movies collected from The Movie Database (TMDb), including user ratings and revenue. 
+
+The columns selected for the context of this report are: 
+"id", "popularity","budget","revenue","cast","genres"
+
+### Questions:
+1. What are the most popular genres?
+2. What is the average movie budget for each genre?
+3. What is the average movie revenue for each genre?
+4. How the cast influence the revenue?
+5. How much impact does popularity has on revenue?
+
+
+
+## Data Reading and Processing 
+### Imports
 ```{r}
 library(ggplot2)
 library(dplyr)
 ```
 
-## Read the dataset
+### Read the dataset
 ```{r}
  all_movies <- read.csv("./Datasets/tmdb-movies.csv")
 ```
@@ -18,13 +41,13 @@ library(dplyr)
 ```{r}
 all_movies[0:3,]
 ```
-## remove unncessary columns
+### remove unncessary columns
 ```{r}
 all_movies = all_movies[,!(names(all_movies) %in% c('imdb_id','homepage','director','overview','tagline','keywords','budget_adj','revenue_adj','production_companies','original_title'))]
 all_movies[1,]
 ```
 
-## remove NA rows
+### remove NA rows
 ```{r}
 nrow(all_movies)
 all_movies = all_movies[rowSums(is.na(all_movies)) == 0,]
@@ -32,31 +55,35 @@ nrow(all_movies)
 ```
 
 ### genres to vector
+The genres are formatted as a string with a seperator. e.g., `action|drama`.
+The genres will be transformed to a vector for better access
 ```{r}
 all_movies$genres = strsplit(all_movies$genres, "\\|")
 ```
 
 ### spread genres
+Each row containing several genres will be repeated to be one genre per row
 ```{r}
-all_movies = all_movies %>%
+movies_genres = all_movies %>%
   unnest(genres)
 ```
 
 
-# EDA
+## EDA
 
-## data summary
+### data summary
 ```{r}
-summary(all_movies)
+#summary(all_movies)
+summary(movies_genres)
 ```
 
-## Genres Popularity
+### 1. What are the most used genres in movies?
 ```{r}
-ggplot(all_movies, aes(genres)) + geom_bar(stat = 'count') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+ggplot(movies_genres, aes(genres)) + geom_bar(stat = 'count') + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
 ```{r}
-ggplot(all_movies, 
+ggplot(movies_genres, 
         aes(x = factor(1),fill = factor(genres))) + 
   geom_bar(stat = "count") + 
   scale_y_continuous(breaks = seq(0,12,3), labels = c("0", "25%", "50%", "75%", "100%")) + 
@@ -66,23 +93,24 @@ ggplot(all_movies,
         axis.ticks.y = element_blank(),
         axis.title.x = element_blank())
 ```
+The most used genres are Drama, Comedy, Thriller, and Action. While TV movie, War, Western, and Foreign are lightly produced.
 
-
-## Average budget per genre
+### 2. What is the average movie budget for each genre?
 
 ```{r}
-budget_per_genre = aggregate(list(budget=all_movies$budget), by=list(genre=all_movies$genres), FUN=mean)
+budget_per_genre = aggregate(list(budget=movies_genres$budget), by=list(genre=movies_genres$genres), FUN=mean)
 budget_per_genre
 ```
 
 ```{r}
 ggplot(budget_per_genre, aes(genre, budget), label=as.character(round(x,2))) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+The most expensive genres are Adventure, Fantasy, Family, History, and Science Fiction. While TV Movie, Foreign, Documentary movies are the least expensive.
 
-## Average revenue per genre
+### 3. What is the average movie revenue for each genre?
 
 ```{r}
-revenue_per_genre = aggregate(list(revenue=all_movies$revenue), by=list(genre=all_movies$genres), FUN=mean)
+revenue_per_genre = aggregate(list(revenue=movies_genres$revenue), by=list(genre=movies_genres$genres), FUN=mean)
 revenue_per_genre[order(revenue_per_genre$revenue, decreasing = TRUE),]
 ```
 
@@ -90,18 +118,19 @@ revenue_per_genre[order(revenue_per_genre$revenue, decreasing = TRUE),]
 ```{r}
 ggplot(revenue_per_genre[1:10,], aes(genre, revenue), label=as.character(round(x,2))) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+The genres that generates highest revenues are Adventure, Action, Fantasy, and Family. While Documentary movies don't generate much of a revenue.
 
 
-
-## Cast influence on revenue | top 30
+### 4. How the cast influence the revenue?
+Top 30 influence
 ```{r}
-all_movies = all_movies %>%
+movies_cast = all_movies %>%
   mutate(cast=strsplit(cast, "\\|")) %>% 
   unnest(cast)
 ```
 
 ```{r}
-revenue_per_cast = aggregate(all_movies$revenue, by=list(cast=all_movies$cast), FUN=mean)
+revenue_per_cast = aggregate(movies_cast$revenue, by=list(cast=movies_cast$cast), FUN=mean)
 revenue_per_cast = revenue_per_cast[order(revenue_per_cast$x, decreasing = TRUE),]
 revenue_per_cast
 ```
@@ -110,18 +139,21 @@ revenue_per_cast
 ```{r}
 ggplot(revenue_per_cast[1:30,], aes(cast, x)) + geom_col() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
+Cast members rarly have effect on the revenue of the movies they participate in. Daisy Ridley had the highest effect on the revenue of the movies she participated in while other cast members had similary effect on the movies they participate in.
 
-## Popularity and revenue
+### 5. How much impact does popularity has on revenue?
 
 ```{r}
 ggplot(all_movies, aes(popularity, revenue)) + geom_point() + xlim(0, 10)
+ggplot(all_movies, aes(popularity, revenue)) + geom_point() + xlim(0, 5)
 ```
-
+The popularity of a movie has an effect on the revenue.
 
 --------------------------------------------------
 
 
-# Inferential statistics
+## Inferential statistics
+## Linear Regression
 ```{r}
 regression_model = lm(data = all_movies, formula = revenue ~ budget)
 regression_model
@@ -137,7 +169,7 @@ summary(regression_model)
 ggplot(all_movies, aes(budget, revenue)) + geom_point() + geom_smooth(method = 'lm', col='blue')
 ```
 
-
+The linear regression proved the positive correlation between the budget and the revenue noticed above.
 
 
 
